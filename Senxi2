@@ -1,0 +1,420 @@
+-- Delta Ultimate Flight, Clean Aimbot, Green ESP, Kill Aura, Toggle UI & Anti-Ban (NSMod Edition)
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local UserInputService = game:GetService("UserInputService")
+local LocalPlayer = Players.LocalPlayer
+local Camera = workspace.CurrentCamera
+
+-- Anti-Ban Hook Protection
+pcall(function()
+    for _, connection in ipairs(getconnections(script.Error or Camera.Changed)) do
+        pcall(function() connection:Disable() end)
+    end
+end)
+
+-- Create GUI Container
+local ScreenGui = Instance.new("ScreenGui")
+ScreenGui.Name = "NSModSupremeScriptGui"
+ScreenGui.Parent = game.CoreGui
+
+-- Draggable Main Menu Frame
+local MainFrame = Instance.new("Frame")
+MainFrame.Size = UDim2.new(0, 240, 0, 310)
+MainFrame.Position = UDim2.new(0.5, -120, 0.4, -155)
+MainFrame.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
+MainFrame.BorderSizePixel = 0
+MainFrame.Active = true
+MainFrame.Draggable = true
+MainFrame.Parent = ScreenGui
+
+local UICorner = Instance.new("UICorner")
+UICorner.CornerRadius = UDim.new(0, 10)
+UICorner.Parent = MainFrame
+
+-- Title Label
+local Title = Instance.new("TextLabel")
+Title.Size = UDim2.new(1, 0, 0, 35)
+Title.BackgroundTransparency = 1
+Title.Text = "NSMod - Flight, Aimbot & Toggle UI"
+Title.TextColor3 = Color3.fromRGB(0, 255, 255)
+Title.TextSize, Title.Font = 10, Enum.Font.GothamBold
+Title.Parent = MainFrame
+
+-- Toggle Button Aimbot
+local ToggleBtn = Instance.new("TextButton")
+ToggleBtn.Size = UDim2.new(0.85, 0, 0, 32)
+ToggleBtn.Position = UDim2.new(0.075, 0, 0.18, -16)
+ToggleBtn.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+ToggleBtn.Text = "Aimbot: OFF"
+ToggleBtn.TextColor3 = Color3.fromRGB(255, 100, 100)
+ToggleBtn.TextSize, ToggleBtn.Font = 12, Enum.Font.GothamBold
+ToggleBtn.Parent = MainFrame
+
+local BtnCorner = Instance.new("UICorner")
+BtnCorner.CornerRadius = UDim.new(0, 8)
+BtnCorner.Parent = ToggleBtn
+
+-- Toggle Button ESP
+local ESPBtn = Instance.new("TextButton")
+ESPBtn.Size = UDim2.new(0.85, 0, 0, 32)
+ESPBtn.Position = UDim2.new(0.075, 0, 0.35, -16)
+ESPBtn.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+ESPBtn.Text = "ESP Green (Skeleton + Aura): OFF"
+ESPBtn.TextColor3 = Color3.fromRGB(255, 100, 100)
+ESPBtn.TextSize, ESPBtn.Font = 10, Enum.Font.GothamBold
+ESPBtn.Parent = MainFrame
+
+local ESPBtnCorner = Instance.new("UICorner")
+ESPBtnCorner.CornerRadius = UDim.new(0, 8)
+ESPBtnCorner.Parent = ESPBtn
+
+-- Toggle Button Kill Aura
+local KillAuraBtn = Instance.new("TextButton")
+KillAuraBtn.Size = UDim2.new(0.85, 0, 0, 32)
+KillAuraBtn.Position = UDim2.new(0.075, 0, 0.52, -16)
+KillAuraBtn.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+KillAuraBtn.Text = "Kill Aura: OFF"
+KillAuraBtn.TextColor3 = Color3.fromRGB(255, 100, 100)
+KillAuraBtn.TextSize, KillAuraBtn.Font = 12, Enum.Font.GothamBold
+KillAuraBtn.Parent = MainFrame
+
+local KillBtnCorner = Instance.new("UICorner")
+KillBtnCorner.CornerRadius = UDim.new(0, 8)
+KillBtnCorner.Parent = KillAuraBtn
+
+-- Toggle Button Flight (Bay lên trời - thuần di chuyển không bắn)
+local FlightBtn = Instance.new("TextButton")
+FlightBtn.Size = UDim2.new(0.85, 0, 0, 32)
+FlightBtn.Position = UDim2.new(0.075, 0, 0.69, -16)
+FlightBtn.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+FlightBtn.Text = "Fly Sky (Bay Lên Trời): OFF"
+FlightBtn.TextColor3 = Color3.fromRGB(255, 100, 100)
+FlightBtn.TextSize, FlightBtn.Font = 11, Enum.Font.GothamBold
+FlightBtn.Parent = MainFrame
+
+local FlightBtnCorner = Instance.new("UICorner")
+FlightBtnCorner.CornerRadius = UDim.new(0, 8)
+FlightBtnCorner.Parent = FlightBtn
+
+-- Status Label & Menu Hide Guide
+local StatusLabel = Instance.new("TextLabel")
+StatusLabel.Size = UDim2.new(0.85, 0, 0, 30)
+StatusLabel.Position = UDim2.new(0.075, 0, 0.88, -15)
+StatusLabel.BackgroundTransparency = 1
+StatusLabel.Text = "Press [RightShift] to Hide/Show UI"
+StatusLabel.TextColor3 = Color3.fromRGB(0, 200, 255)
+StatusLabel.TextSize, StatusLabel.Font = 10, Enum.Font.GothamBold
+StatusLabel.Parent = MainFrame
+
+-- Massive Blue FOV Circle
+local FOVCircle = Drawing.new("Circle")
+FOVCircle.Visible = false
+FOVCircle.Radius = 350
+FOVCircle.Color = Color3.fromRGB(0, 150, 255)
+FOVCircle.Thickness = 2
+FOVCircle.Filled = false
+FOVCircle.Transparency = 0.8
+
+local aimbotEnabled = false
+local espEnabled = false
+local killAuraEnabled = false
+local flightEnabled = false
+local menuVisible = true
+local lastCameraCFrame = Camera.CFrame
+local currentTarget = nil
+local espCache = {}
+local killAuraRange = 25
+
+local bg, bv
+
+-- Toggle Menu Visibility via Keybind (RightShift)
+UserInputService.InputBegan:Connect(function(input, gameProcessed)
+    if input.KeyCode == Enum.KeyCode.RightShift then
+        menuVisible = not menuVisible
+        MainFrame.Visible = menuVisible
+    end
+end)
+
+ToggleBtn.MouseButton1Click:Connect(function()
+    aimbotEnabled = not aimbotEnabled
+    if aimbotEnabled then
+        ToggleBtn.Text = "Aimbot: ON"
+        ToggleBtn.TextColor3 = Color3.fromRGB(100, 255, 100)
+        FOVCircle.Visible = true
+    else
+        ToggleBtn.Text = "Aimbot: OFF"
+        ToggleBtn.TextColor3 = Color3.fromRGB(255, 100, 100)
+        FOVCircle.Visible = false
+        currentTarget = nil
+    end
+end)
+
+ESPBtn.MouseButton1Click:Connect(function()
+    espEnabled = not espEnabled
+    if espEnabled then
+        ESPBtn.Text = "ESP Green (Skeleton + Aura): ON"
+        ESPBtn.TextColor3 = Color3.fromRGB(100, 255, 100)
+    else
+        ESPBtn.Text = "ESP Green (Skeleton + Aura): OFF"
+        ESPBtn.TextColor3 = Color3.fromRGB(255, 100, 100)
+        for _, data in pairs(espCache) do
+            if data.aura then data.aura:Remove() end
+            for _, line in pairs(data.skeleton) do line:Remove() end
+        end
+        espCache = {}
+    end
+end)
+
+KillAuraBtn.MouseButton1Click:Connect(function()
+    killAuraEnabled = not killAuraEnabled
+    if killAuraEnabled then
+        KillAuraBtn.Text = "Kill Aura: ON"
+        KillAuraBtn.TextColor3 = Color3.fromRGB(100, 255, 100)
+    else
+        KillAuraBtn.Text = "Kill Aura: OFF"
+        KillAuraBtn.TextColor3 = Color3.fromRGB(255, 100, 100)
+    end
+end)
+
+FlightBtn.MouseButton1Click:Connect(function()
+    flightEnabled = not flightEnabled
+    local character = LocalPlayer.Character
+    if not character or not character:FindFirstChild("HumanoidRootPart") then return end
+    local rootPart = character.HumanoidRootPart
+    
+    if flightEnabled then
+        FlightBtn.Text = "Fly Sky (Bay Lên Trời): ON"
+        FlightBtn.TextColor3 = Color3.fromRGB(100, 255, 100)
+        
+        rootPart.CFrame = rootPart.CFrame + Vector3.new(0, 50, 0)
+        
+        bg = Instance.new("BodyGyro")
+        bg.P = 9e4
+        bg.maxTorque = Vector3.new(9e4, 9e4, 9e4)
+        bg.cframe = rootPart.CFrame
+        bg.Parent = rootPart
+        
+        bv = Instance.new("BodyVelocity")
+        bv.velocity = Vector3.new(0, 0, 0)
+        bv.maxForce = Vector3.new(9e4, 9e4, 9e4)
+        bv.Parent = rootPart
+    else
+        FlightBtn.Text = "Fly Sky (Bay Lên Trời): OFF"
+        FlightBtn.TextColor3 = Color3.fromRGB(255, 100, 100)
+        if bg then bg:Destroy() end
+        if bv then bv:Destroy() end
+    end
+end)
+
+-- Visibility Check via Raycast
+local function isVisible(targetPart)
+    if not LocalPlayer.Character or not LocalPlayer.Character:FindFirstChild("Head") then return false end
+    local origin = LocalPlayer.Character.Head.Position
+    local direction = (targetPart.Position - origin)
+    
+    local raycastParams = RaycastParams.new()
+    raycastParams.FilterType = Enum.RaycastFilterType.Exclude
+    raycastParams.FilterDescendantsInstances = {LocalPlayer.Character, Camera}
+    
+    local result = workspace:Raycast(origin, direction, raycastParams)
+    if result and result.Instance:IsDescendantOf(targetPart.Parent) then
+        return true
+    end
+    return false
+end
+
+-- Validate current target
+local function isValidTarget(targetPart)
+    if not targetPart or not targetPart.Parent then return false end
+    local character = targetPart.Parent
+    local humanoid = character:FindFirstChildOfClass("Humanoid")
+    
+    if not humanoid or humanoid.Health <= 0 then return false end
+    
+    local vector, onScreen = Camera:WorldToViewportPoint(targetPart.Position)
+    if not onScreen then return false end
+    
+    local mousePos = UserInputService:GetMouseLocation()
+    local distance = (Vector2.new(vector.X, vector.Y) - mousePos).Magnitude
+    if distance > FOVCircle.Radius then return false end
+    
+    return isVisible(targetPart)
+end
+
+-- Get best target for Aimbot
+local function getBestTarget()
+    local bestTarget = nil
+    local shortestDistance = FOVCircle.Radius
+
+    for _, player in ipairs(Players:GetPlayers()) do
+        if player ~= LocalPlayer and player.Character then
+            local humanoid = player.Character:FindFirstChildOfClass("Humanoid")
+            local head = player.Character:FindFirstChild("Head")
+            
+            if humanoid and head and humanoid.Health > 0 then
+                local vector, onScreen = Camera:WorldToViewportPoint(head.Position)
+                
+                if onScreen then
+                    local mousePos = UserInputService:GetMouseLocation()
+                    local distance = (Vector2.new(vector.X, vector.Y) - mousePos).Magnitude
+                    
+                    if distance < shortestDistance and isVisible(head) then
+                        shortestDistance = distance
+                        bestTarget = head
+                    end
+                end
+            end
+        end
+    end
+    return bestTarget
+end
+
+-- Kill Aura logic (Chỉ hoạt động khi không bật bay, hoặc tùy chỉnh theo ý muốn)
+local function runKillAura()
+    if not killAuraEnabled or flightEnabled or not LocalPlayer.Character or not LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then return end
+    local rootPart = LocalPlayer.Character.HumanoidRootPart
+    
+    for _, player in ipairs(Players:GetPlayers()) do
+        if player ~= LocalPlayer and player.Character then
+            local humanoid = player.Character:FindFirstChildOfClass("Humanoid")
+            local targetRoot = player.Character:FindFirstChild("HumanoidRootPart")
+            
+            if humanoid and targetRoot and humanoid.Health > 0 then
+                local distance = (rootPart.Position - targetRoot.Position).Magnitude
+                if distance <= killAuraRange then
+                    pcall(function()
+                        if LocalPlayer.Character:FindFirstChildOfClass("Tool") then
+                            LocalPlayer.Character:FindFirstChildOfClass("Tool"):Activate()
+                        end
+                    end)
+                end
+            end
+        end
+    end
+end
+
+-- Main Render Loop
+RunService.RenderStepped:Connect(function()
+    FOVCircle.Position = UserInputService:GetMouseLocation()
+    
+    -- Flight movement update
+    if flightEnabled and LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
+        if bg and bv then
+            bg.cframe = Camera.CFrame
+            bv.velocity = Camera.CFrame.LookVector * 50
+        end
+    end
+
+    -- Aimbot execution
+    if aimbotEnabled then
+        local currentCameraCFrame = Camera.CFrame
+        local cameraMovedManually = (currentCameraCFrame.LookVector - lastCameraCFrame.LookVector).Magnitude > 0.02
+        
+        if cameraMovedManually then
+            currentTarget = nil
+            lastCameraCFrame = currentCameraCFrame
+            return
+        end
+        
+        if not isValidTarget(currentTarget) then
+            currentTarget = getBestTarget()
+        end
+        
+        if currentTarget then
+            local targetCFrame = CFrame.new(Camera.CFrame.Position, currentTarget.Position)
+            Camera.CFrame = Camera.CFrame:Lerp(targetCFrame, 0.3)
+        end
+        
+        lastCameraCFrame = Camera.CFrame
+    end
+
+    -- Kill Aura execution (Bị vô hiệu hóa tự động khi đang bay để thuần di chuyển)
+    runKillAura()
+
+    -- ESP Green (Skeleton + Aura) execution
+    if espEnabled then
+        local activePlayers = {}
+        
+        for _, player in ipairs(Players:GetPlayers()) do
+            if player ~= LocalPlayer and player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
+                local character = player.Character
+                local humanoid = character:FindFirstChildOfClass("Humanoid")
+                local rootPart = character:FindFirstChild("HumanoidRootPart")
+                
+                if humanoid and humanoid.Health > 0 then
+                    activePlayers[player] = true
+                    
+                    if not espCache[player] then
+                        local aura = Drawing.new("Circle")
+                        aura.Visible = false
+                        aura.Color = Color3.fromRGB(0, 255, 0)
+                        aura.Thickness = 2
+                        aura.Filled = false
+                        aura.Transparency = 0.8
+                        
+                        local skeleton = {}
+                        for i = 1, 5 do
+                            local line = Drawing.new("Line")
+                            line.Visible = false
+                            line.Color = Color3.fromRGB(0, 255, 0)
+                            line.Thickness = 1.5
+                            table.insert(skeleton, line)
+                        end
+                        
+                        espCache[player] = {aura = aura, skeleton = skeleton}
+                    end
+                    
+                    local data = espCache[player]
+                    local vector, onScreen = Camera:WorldToViewportPoint(rootPart.Position)
+                    
+                    if onScreen then
+                        data.aura.Visible = true
+                        data.aura.Position = Vector2.new(vector.X, vector.Y)
+                        data.aura.Radius = math.clamp(5000 / (Camera.CFrame.Position - rootPart.Position).Magnitude, 15, 60)
+                        
+                        local head = character:FindFirstChild("Head")
+                        local torso = character:FindFirstChild("UpperTorso") or character:FindFirstChild("Torso")
+                        local leftArm = character:FindFirstChild("LeftUpperArm") or character:FindFirstChild("Left Arm")
+                        local rightArm = character:FindFirstChild("RightUpperArm") or character:FindFirstChild("Right Arm")
+                        local leftLeg = character:FindFirstChild("LeftUpperLeg") or character:FindFirstChild("Left Leg")
+                        local rightLeg = character:FindFirstChild("RightUpperLeg") or character:FindFirstChild("Right Leg")
+                        
+                        local partsPairs = {
+                            {head, torso},
+                            {torso, leftArm},
+                            {torso, rightArm},
+                            {torso, leftLeg},
+                            {torso, rightLeg}
+                        }
+                        
+                        for i, pair in ipairs(partsPairs) do
+                            local p1, p2 = pair[1], pair[2]
+                            if p1 and p2 and data.skeleton[i] then
+                                local v1, s1 = Camera:WorldToViewportPoint(p1.Position)
+                                local v2, s2 = Camera:WorldToViewportPoint(p2.Position)
+                                if s1 and s2 then
+                                    data.skeleton[i].Visible = true
+                                    data.skeleton[i].From = Vector2.new(v1.X, v1.Y)
+                                    data.skeleton[i].To = Vector2.new(v2.X, v2.Y)
+                                else
+                                    data.skeleton[i].Visible = false
+                                end
+                            end
+                        end
+                    else
+                        data.aura.Visible = false
+                        for _, line in pairs(data.skeleton) do line.Visible = false end
+                    end
+                end
+            end
+        end
+        
+        for player, data in pairs(espCache) do
+            if not activePlayers[player] or not player.Parent then
+                if data.aura then data.aura:Remove() end
+                for _, line in pairs(data.skeleton) do line:Remove() end
+                espCache[player] = nil
+            end
+        end
+    end
+end)
